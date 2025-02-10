@@ -3,6 +3,10 @@ from snowflake.core import Root, CreateMode
 from snowflake.core.schema import Schema
 from snowflake.snowpark.functions import lit, col
 
+# Disable warnings from model registry when model from model registry is loaded into notebook
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+
 def setup_demo(session: Session):
     # Setting up data for demo
     database = session.get_current_database()
