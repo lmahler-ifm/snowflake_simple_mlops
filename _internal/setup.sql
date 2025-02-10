@@ -4,10 +4,10 @@ USE ROLE ACCOUNTADMIN;
 CREATE WAREHOUSE IF NOT EXISTS COMPUTE_WH WITH WAREHOUSE_SIZE='X-SMALL';
 CREATE WAREHOUSE IF NOT EXISTS FEATURE_STORE_WH WITH WAREHOUSE_SIZE='MEDIUM';
 
--- 
-CREATE OR REPLACE SCHEMA MLOPS_DEMO._DATA_GENERATION;
+-- Create schema for setup
+CREATE OR REPLACE SCHEMA SIMPLE_MLOPS_DEMO._DATA_GENERATION;
 
-CREATE OR REPLACE FUNCTION MLOPS_DEMO._DATA_GENERATION.GENERATE_TRANSACTIONS (REVENUE FLOAT, CHANNEL ARRAY)
+CREATE OR REPLACE FUNCTION SIMPLE_MLOPS_DEMO._DATA_GENERATION.GENERATE_TRANSACTIONS (REVENUE FLOAT, CHANNEL ARRAY)
   returns TABLE (CUSTOMER_ID INT, TRANSACTION_AMOUNT FLOAT, TRANSACTION_CHANNEL STRING)
   language python
   runtime_version = '3.11'
@@ -51,7 +51,7 @@ $$
 ;
 
 -- Setup Procedure
-WITH DATA_GENERATION AS PROCEDURE()
+CREATE OR REPLACE PROCEDURE SIMPLE_MLOPS_DEMO._DATA_GENERATION.DATA_GENERATION()
   RETURNS STRING
   LANGUAGE PYTHON
   RUNTIME_VERSION = '3.11'
@@ -63,7 +63,7 @@ def run(session):
     from snowflake.snowpark.functions import lit, col
     import pandas as pd
     import numpy as np
-    
+
     # Define the date range
     start_date = '2024-01-01'
     end_date = '2025-01-31'
@@ -110,9 +110,10 @@ def run(session):
     revenue_in_shop = revenue_df.filter(col('DATE') < lit('2024-06-01'))
     revenue_online = revenue_df.filter(col('DATE') >= lit('2024-06-01'))
     
-    revenue_in_shop.join_table_function('MLOPS_DEMO._DATA_GENERATION.GENERATE_TRANSACTIONS', col('REVENUE'), lit([0.75,0.25])).drop('REVENUE').write.save_as_table(table_name='MLOPS_DEMO._DATA_GENERATION._TRANSACTIONS', mode='overwrite')
-    revenue_online.join_table_function('MLOPS_DEMO._DATA_GENERATION.GENERATE_TRANSACTIONS',col('REVENUE'), lit([0.25,0.75])).drop('REVENUE').write.save_as_table(table_name='MLOPS_DEMO._DATA_GENERATION._TRANSACTIONS', mode='append')
+    revenue_in_shop.join_table_function('SIMPLE_MLOPS_DEMO._DATA_GENERATION.GENERATE_TRANSACTIONS', col('REVENUE'), lit([0.75,0.25])).drop('REVENUE').write.save_as_table(table_name='SIMPLE_MLOPS_DEMO._DATA_GENERATION._TRANSACTIONS', mode='overwrite')
+    revenue_online.join_table_function('SIMPLE_MLOPS_DEMO._DATA_GENERATION.GENERATE_TRANSACTIONS',col('REVENUE'), lit([0.25,0.75])).drop('REVENUE').write.save_as_table(table_name='SIMPLE_MLOPS_DEMO._DATA_GENERATION._TRANSACTIONS', mode='append')
     
     return "Demo Environment is setup."
 $$
-CALL DATA_GENERATION();
+;
+CALL SIMPLE_MLOPS_DEMO._DATA_GENERATION.DATA_GENERATION();
