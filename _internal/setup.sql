@@ -112,7 +112,7 @@ def run(session):
     
     revenue_in_shop.join_table_function('SIMPLE_MLOPS_DEMO._DATA_GENERATION.GENERATE_TRANSACTIONS', col('REVENUE'), lit([0.75,0.25])).drop('REVENUE').write.save_as_table(table_name='SIMPLE_MLOPS_DEMO._DATA_GENERATION._TRANSACTIONS', mode='overwrite')
     revenue_online.join_table_function('SIMPLE_MLOPS_DEMO._DATA_GENERATION.GENERATE_TRANSACTIONS',col('REVENUE'), lit([0.25,0.75])).drop('REVENUE').write.save_as_table(table_name='SIMPLE_MLOPS_DEMO._DATA_GENERATION._TRANSACTIONS', mode='append')
-    
+    session.table('SIMPLE_MLOPS_DEMO._DATA_GENERATION._TRANSACTIONS').select('CUSTOMER_ID').distinct().write.save_as_table('SIMPLE_MLOPS_DEMO._DATA_GENERATION._CUSTOMERS')
     return "Demo Environment is setup."
 $$
 ;

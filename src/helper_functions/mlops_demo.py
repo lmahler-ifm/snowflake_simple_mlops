@@ -541,11 +541,12 @@ def train_new_model(session, feature_cutoff_date, target_start_date, target_end_
     # ------------------------------------------------------------------------------
     # Create a Model Monitor to Track Model Performance Over Time
     # ------------------------------------------------------------------------------
+    mm_db = session.get_current_database()
     session.sql(f"""
-    CREATE OR REPLACE MODEL MONITOR MLOPS_DEMO.MODEL_REGISTRY.MM_{model_version} WITH
-        MODEL=MLOPS_DEMO.MODEL_REGISTRY.CUSTOMER_REVENUE_MODEL VERSION={model_version} FUNCTION=PREDICT
-        SOURCE=MLOPS_DEMO.MODEL_REGISTRY.MM_TRANS_SOURCE_{model_version}
-        BASELINE=MLOPS_DEMO.MODEL_REGISTRY.MM_REVENUE_BASELINE_{model_version},
+    CREATE OR REPLACE MODEL MONITOR {mm_db}.MODEL_REGISTRY.MM_{model_version} WITH
+        MODEL={mm_db}.MODEL_REGISTRY.CUSTOMER_REVENUE_MODEL VERSION={model_version} FUNCTION=PREDICT
+        SOURCE={mm_db}.MODEL_REGISTRY.MM_TRANS_SOURCE_{model_version}
+        BASELINE={mm_db}.MODEL_REGISTRY.MM_REVENUE_BASELINE_{model_version},
         TIMESTAMP_COLUMN='FEATURE_CUTOFF_DATE'
         ID_COLUMNS=('CUSTOMER_ID')
         PREDICTION_SCORE_COLUMNS=('NEXT_MONTH_REVENUE_PREDICTION')
