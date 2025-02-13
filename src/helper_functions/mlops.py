@@ -248,7 +248,7 @@ def simulate_model_performance(session, start_date, end_date, model_version, gen
         .group_by(['CUSTOMER_ID', 'YEAR', 'MONTH'])
         .agg(F.sum('TRANSACTION_AMOUNT').cast('decimal(38,2)').as_('REVENUE'))
         # Determine the last day of each month by computing the date from parts and subtracting one day.
-        .with_column('DATE', F.date_add(F.date_from_parts(col('YEAR'), col('MONTH'), lit(1)), lit(-1)))
+        .with_column('DATE', F.date_add(F.date_from_parts(col('YEAR'), col('MONTH'), lit(1)), lit(-1)).cast('timestamp'))
         # Remove helper columns as they are no longer needed.
         .drop(['YEAR', 'MONTH'])
     )
