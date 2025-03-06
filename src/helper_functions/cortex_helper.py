@@ -51,9 +51,9 @@ def select_dataframe():
     }
     
     # Display warning if no supported DataFrames are found
-    if not available_dataframes:
-        st.warning("No supported DataFrame variables found.")
-        st.stop()
+    #if not available_dataframes:
+    #    st.warning("No supported DataFrame variables found.")
+    #    st.stop()
     
     # Create a dropdown for selecting a DataFrame
     dataframe_options = [f"[{icon}] {name}" for name, (_, icon) in available_dataframes.items() if not name.startswith("_")]
