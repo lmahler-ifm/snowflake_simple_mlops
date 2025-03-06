@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 from snowflake.cortex import complete, CompleteOptions
-from llm_response_formatting import extract_python_code, extract_json_code
+from notebook_copilot.llm_response_formatting import extract_python_code, extract_json_code
 import inspect
 
 # Configure LLM completion options
