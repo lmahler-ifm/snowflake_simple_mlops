@@ -7,7 +7,7 @@ dependencies:
   - plotly=5.24.1
   - seaborn=0.13.2
   - shap=0.46.0
-  - snowflake-ml-python=1.7.2
-  - snowflake.core=1.0.2
+  - snowflake-ml-python=1.7.4
+  - snowflake.core=1.0.5
   - statsmodels=0.14.4
   - tabulate=*

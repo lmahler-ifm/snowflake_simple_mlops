@@ -360,3 +360,9 @@ def extract_python_code(text):
         return match.group(1).strip()
     else:
         return "No Python code found in the input string."
+    
+# Function to extract JSON code from a string using regex
+def extract_json_code(response_text):
+    pattern = r"```json(.*?)```"  # Matches content enclosed in triple backticks labeled 'json'
+    match = re.search(pattern, response_text, re.DOTALL)  # DOTALL ensures newlines are captured
+    return match.group(1).strip() if match else "No JSON code found in the input string."

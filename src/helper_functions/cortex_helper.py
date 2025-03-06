@@ -1,13 +1,7 @@
 import streamlit as st
 import json
-import re
-from snowflake.cortex import CompleteOptions
-
-# Function to extract JSON code from a string using regex
-def extract_json_code(response_text):
-    pattern = r"```json(.*?)```"  # Matches content enclosed in triple backticks labeled 'json'
-    match = re.search(pattern, response_text, re.DOTALL)  # DOTALL ensures newlines are captured
-    return match.group(1).strip() if match else "No JSON code found in the input string."
+from snowflake.cortex import complete, CompleteOptions
+from helper_functions.plotting import extract_python_code, extract_json_code
 
 # Configure LLM completion options
 llm_options = CompleteOptions(
@@ -151,5 +145,4 @@ def generate_plotly_code(df, dataframe_type):
 def get_cortex_helper():
     st.subheader('🤖 Ask Cortex about your Data! ', help='Select a dataframe and ask Cortex for generating plots.')
     dataframe, dataframe_type = select_dataframe()
-    #suggest_llm_prompts(sample_data)
     generate_plotly_code(dataframe, dataframe_type)
