@@ -19,6 +19,7 @@ from datetime import datetime
 import calendar
 from tabulate import tabulate
 from datetime import timedelta
+import json
 
 
 def is_feature_store_updated(session: Session, timestamp_df):
@@ -210,6 +211,12 @@ def simulate_model_performance(session, start_date, end_date, model_version, gen
     )
     # Retrieve the specific model version from the registry.
     registered_model = reg.get_model('CUSTOMER_REVENUE_MODEL').version(model_version)
+
+    # Retrieve the source table of the model version's model monitor
+    model_monitors = pd.DataFrame(reg.show_model_monitors())
+    model_monitor = model_monitors[model_monitors['name'] == reg.get_monitor(model_version=registered_model).name]
+    model_monitor_source = json.loads(model_monitor.loc[0,'source'])
+    model_monitor_source = f"{model_monitor_source['database_name']}.{model_monitor_source['schema_name']}.{model_monitor_source['name']}"
     
     # ------------------------------------------------------------------------------
     # Generate Predictions for Each Day in the Date Range
@@ -229,7 +236,7 @@ def simulate_model_performance(session, start_date, end_date, model_version, gen
         predictions = predictions.with_column('NEXT_MONTH_REVENUE_PREDICTION', F.col('NEXT_MONTH_REVENUE_PREDICTION').cast('number(38,2)'))
         # Append the predictions to the source table used for model monitoring.
         predictions.write.save_as_table(
-            table_name=f'{session.get_current_database()}.MODEL_REGISTRY.MM_TRANS_SOURCE_{model_version}', 
+            table_name=model_monitor_source, 
             mode='append'
         )
     
@@ -267,7 +274,7 @@ def simulate_model_performance(session, start_date, end_date, model_version, gen
     # Update the Model Monitor Source Table with Actual Revenue Values
     # ------------------------------------------------------------------------------
     # Load the source table that holds the prediction data for model monitoring.
-    source_table = session.table(f'{session.get_current_database()}.MODEL_REGISTRY.MM_TRANS_SOURCE_{model_version}')
+    source_table = session.table(model_monitor_source)
     
     # Update the source table by matching records on FEATURE_CUTOFF_DATE and CUSTOMER_ID,
     # assigning the actual revenue values to the NEXT_MONTH_REVENUE column.
