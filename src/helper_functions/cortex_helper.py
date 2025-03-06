@@ -30,7 +30,11 @@ def select_dataframe2():
         for var_name, var_obj in global_variables.items()
         if f"{type(var_obj).__module__}.{type(var_obj).__name__}" in dataframe_type_icons
     }
-    return available_dataframes
+    st.info(available_dataframes)
+    dataframe_options = [f"[{icon}] {name}" for name, (_, icon) in available_dataframes.items() if not name.startswith("_")]
+    st.info(dataframe_options)
+    selected_option = st.selectbox("Select DataFrame:", dataframe_options)
+    return dataframe_options
     
 def select_dataframe():
     """
