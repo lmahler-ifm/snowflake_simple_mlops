@@ -11,7 +11,6 @@ from snowflake.snowpark import Session
 import streamlit as st
 import plotly.express as px
 from snowflake.snowpark import functions as F
-import re
 from snowflake.ml.registry import Registry
 
 def visualize_lineage(df: pd.DataFrame, short_names: bool = False, initial_zoom: float = 1.0):
@@ -346,23 +345,3 @@ def compare_two_models(session: Session, version_name_1, version_name_2):
             orientation="h"
         )
         st.plotly_chart(fig2, use_container_width=True)
-
-# Function that extracts the actual Python code returned by mistral
-def extract_python_code(text):
-    # Regular expression pattern to extract content between triple backticks with 'python' as language identifier
-    pattern = r"```python(.*?)```"
-
-    # re.DOTALL allows the dot (.) to match newlines as well
-    match = re.search(pattern, text, re.DOTALL)
-    
-    if match:
-        # Return the matched group, stripping any leading or trailing whitespace
-        return match.group(1).strip()
-    else:
-        return "No Python code found in the input string."
-    
-# Function to extract JSON code from a string using regex
-def extract_json_code(response_text):
-    pattern = r"```json(.*?)```"  # Matches content enclosed in triple backticks labeled 'json'
-    match = re.search(pattern, response_text, re.DOTALL)  # DOTALL ensures newlines are captured
-    return match.group(1).strip() if match else "No JSON code found in the input string."

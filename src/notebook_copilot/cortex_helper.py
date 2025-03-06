@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 from snowflake.cortex import complete, CompleteOptions
-from helper_functions.plotting import extract_python_code, extract_json_code
+from llm_response_formatting import extract_python_code, extract_json_code
 import inspect
 
 # Configure LLM completion options
@@ -192,8 +192,7 @@ def cortex_helper_visualize_query(df, user_query, verbose=False):
             st.error("Adjusted code also contains errors.")
             st.error(retry_error)
 
-def get_cortex_helper():
+def cortex_helper_ui():
     st.subheader('🤖 Ask Cortex about your Data! ', help='Select a dataframe and ask Cortex for generating plots.')
-    # Retrieve all available variables in notebook
     dataframe = select_dataframe()
     generate_plotly_code(dataframe)
