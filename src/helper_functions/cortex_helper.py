@@ -2,6 +2,7 @@ import streamlit as st
 import json
 from snowflake.cortex import complete, CompleteOptions
 from helper_functions.plotting import extract_python_code, extract_json_code
+import inspect
 
 # Configure LLM completion options
 llm_options = CompleteOptions(
@@ -15,6 +16,10 @@ dataframe_type_icons = {
     "snowflake.snowpark.dataframe.DataFrame": "❄️",
     "snowflake.snowpark.table.Table": "❄️"
 }
+
+def test():
+    frame = inspect.currentframe().f_back  # Get the caller's frame
+    return frame.f_globals
 
 def select_dataframe():
     """
