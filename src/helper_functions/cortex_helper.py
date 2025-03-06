@@ -17,7 +17,7 @@ dataframe_type_icons = {
     "snowflake.snowpark.table.Table": "❄️"
 }
     
-def select_dataframe(global_variables):
+def select_dataframe():
     """
     Identifies supported DataFrame variables available in the global scope.
     Allows the user to select one via Streamlit UI.
