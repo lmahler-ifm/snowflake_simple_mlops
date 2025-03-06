@@ -1,4 +1,5 @@
 import inspect
+import streamlit as st
 
 def get_function_source_recursively(func, max_depth=1, current_depth=0, seen=None):
     """
@@ -40,3 +41,7 @@ def get_function_source_recursively(func, max_depth=1, current_depth=0, seen=Non
         return source + "\n" + called_sources
     else:
         return source  # Stop recursion when max_depth is reached
+    
+def get_snowsight_url(session, link_description, path):
+    url = session.sql(f"SELECT CONCAT_WS('/', 'https://app.snowflake.com',CURRENT_ORGANIZATION_NAME(), CURRENT_ACCOUNT_NAME(), '{path}') AS BASE_URL").collect()[0]['BASE_URL']
+    return st.info(f'**{link_description}**:\n\n {url}')
