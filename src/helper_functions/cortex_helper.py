@@ -36,12 +36,11 @@ def select_dataframe2():
     selected_option = st.selectbox("Select DataFrame:", dataframe_options)
     return dataframe_options
     
-def select_dataframe():
+def select_dataframe(global_variables):
     """
     Identifies supported DataFrame variables available in the global scope.
     Allows the user to select one via Streamlit UI.
     """
-    global_variables = inspect.currentframe().f_back.f_globals
     # Retrieve DataFrame variables from the global scope
     available_dataframes = {
         var_name: (var_obj, dataframe_type_icons.get(f"{type(var_obj).__module__}.{type(var_obj).__name__}"))
@@ -166,5 +165,7 @@ def generate_plotly_code(df, dataframe_type):
 
 def get_cortex_helper():
     st.subheader('🤖 Ask Cortex about your Data! ', help='Select a dataframe and ask Cortex for generating plots.')
-    dataframe, dataframe_type = select_dataframe()
+    # Retrieve all available variables in notebook
+    global_variables = inspect.currentframe().f_back.f_globals
+    dataframe, dataframe_type = select_dataframe(global_variables)
     generate_plotly_code(dataframe, dataframe_type)
