@@ -196,3 +196,18 @@ def cortex_helper_ui():
     st.subheader('🤖 Ask Cortex about your Data! ', help='Select a dataframe and ask Cortex for generating plots.')
     dataframe = select_dataframe()
     generate_plotly_code(dataframe)
+
+def cortex_helper_describe_columns(df, columns=None, exclude_columns=None, model='mistral-large2'):
+    if columns:
+        df = df.select(columns)
+    if exclude_columns:
+        df = df.drop(exclude_columns)
+    prompt = f'Return a JSON string with column names as keys and a short business description as values. The columns are: {df.columns}. Do not wrap the json codes in JSON markers.'
+    llm_response = complete(model, prompt, stream=False)
+    feature_descriptions = json.loads(llm_response)
+    return feature_descriptions
+
+def cortex_helper_explain_column_sql(sql, column, model='mistral-large2'):
+    prompt = f'You are given a SQL query. Explain how the column {column} is calculated. The SQL query: {sql}'
+    resp = complete(model, prompt)
+    return resp
