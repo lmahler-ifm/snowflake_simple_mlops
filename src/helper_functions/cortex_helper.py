@@ -16,36 +16,19 @@ dataframe_type_icons = {
     "snowflake.snowpark.dataframe.DataFrame": "❄️",
     "snowflake.snowpark.table.Table": "❄️"
 }
-
-def test():
-    frame = inspect.currentframe().f_back  # Get the caller's frame
-    return frame.f_globals
-
-def select_dataframe2():
-    global_variables = inspect.currentframe().f_back.f_globals
-    # Retrieve DataFrame variables from the global scope
-    available_dataframes = {
-        var_name: (var_obj, dataframe_type_icons.get(f"{type(var_obj).__module__}.{type(var_obj).__name__}"))
-        #for var_name, var_obj in globals().items()
-        for var_name, var_obj in global_variables.items()
-        if f"{type(var_obj).__module__}.{type(var_obj).__name__}" in dataframe_type_icons
-    }
-    st.info(available_dataframes)
-    dataframe_options = [f"[{icon}] {name}" for name, (_, icon) in available_dataframes.items() if not name.startswith("_")]
-    st.info(dataframe_options)
-    selected_option = st.selectbox("Select DataFrame:", dataframe_options)
-    return dataframe_options
     
 def select_dataframe(global_variables):
     """
     Identifies supported DataFrame variables available in the global scope.
     Allows the user to select one via Streamlit UI.
     """
+    #
+    global_notebook_variables = inspect.currentframe().f_back.f_back.f_globals
     # Retrieve DataFrame variables from the global scope
     available_dataframes = {
         var_name: (var_obj, dataframe_type_icons.get(f"{type(var_obj).__module__}.{type(var_obj).__name__}"))
         #for var_name, var_obj in globals().items()
-        for var_name, var_obj in global_variables.items()
+        for var_name, var_obj in global_notebook_variables.items()
         if f"{type(var_obj).__module__}.{type(var_obj).__name__}" in dataframe_type_icons
     }
     
@@ -105,9 +88,6 @@ def suggest_llm_prompts(sample_data):
             llm_response = complete(model="mistral-large2", prompt=llm_input, options=llm_options)
             suggested_prompts = json.loads(extract_json_code(llm_response))
             
-            #with st.expander("Suggestions:", expanded=True):
-            #    for prompt in suggested_prompts:
-            #        st.code(prompt['prompt'], language=None)
             for prompt in suggested_prompts:
                 st.code(prompt['prompt'], language=None)
 
@@ -166,6 +146,5 @@ def generate_plotly_code(df, dataframe_type):
 def get_cortex_helper():
     st.subheader('🤖 Ask Cortex about your Data! ', help='Select a dataframe and ask Cortex for generating plots.')
     # Retrieve all available variables in notebook
-    global_variables = inspect.currentframe().f_back.f_globals
-    dataframe, dataframe_type = select_dataframe(global_variables)
+    dataframe, dataframe_type = select_dataframe()
     generate_plotly_code(dataframe, dataframe_type)
