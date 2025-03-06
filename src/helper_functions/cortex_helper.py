@@ -21,6 +21,17 @@ def test():
     frame = inspect.currentframe().f_back  # Get the caller's frame
     return frame.f_globals
 
+def select_dataframe2():
+    global_variables = inspect.currentframe().f_back.f_globals
+    # Retrieve DataFrame variables from the global scope
+    available_dataframes = {
+        var_name: (var_obj, dataframe_type_icons.get(f"{type(var_obj).__module__}.{type(var_obj).__name__}"))
+        #for var_name, var_obj in globals().items()
+        for var_name, var_obj in global_variables.items()
+        if f"{type(var_obj).__module__}.{type(var_obj).__name__}" in dataframe_type_icons
+    }
+    return available_dataframes
+    
 def select_dataframe():
     """
     Identifies supported DataFrame variables available in the global scope.
