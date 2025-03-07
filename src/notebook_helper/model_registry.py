@@ -175,10 +175,13 @@ class ModelRegistryHelper:
         self.get_all_models()
         self.get_all_monitors()
 
-    def plot_model_performance(self):
+    def plot_model_performance(self, update_data = False):
         if not hasattr(self, 'all_models'):
             self.get_all_models()
         if not hasattr(self, 'all_monitors'):
+            self.get_all_monitors()
+        if update_data:
+            self.get_all_models()
             self.get_all_monitors()
 
         all_models = self.all_models
