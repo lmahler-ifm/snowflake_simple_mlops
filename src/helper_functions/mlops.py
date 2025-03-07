@@ -215,7 +215,7 @@ def simulate_model_performance(session, start_date, end_date, model_version, gen
     # Retrieve the source table of the model version's model monitor
     model_monitors = pd.DataFrame(reg.show_model_monitors())
     model_monitor = model_monitors[model_monitors['name'] == reg.get_monitor(model_version=registered_model).name]
-    model_monitor_source = json.loads(model_monitor.loc[0,'source'])
+    model_monitor_source = json.loads(model_monitor['source'].iloc[0])
     model_monitor_source = f"{model_monitor_source['database_name']}.{model_monitor_source['schema_name']}.{model_monitor_source['name']}"
     
     # ------------------------------------------------------------------------------
