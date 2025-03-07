@@ -1,8 +1,8 @@
-from snowflake.snowpark.functions import lit
 import streamlit as st
-import pandas as pd
-import plotly.graph_objects as go
 import ast
+import pandas as pd
+from snowflake.snowpark.functions import lit
+import plotly.graph_objects as go
 
 class ModelRegistryHelper:
     def __init__(self, session, registry):

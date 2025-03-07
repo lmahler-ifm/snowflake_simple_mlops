@@ -18,7 +18,6 @@ import time
 from datetime import datetime
 import calendar
 from tabulate import tabulate
-from datetime import timedelta
 import json
 
 
@@ -339,14 +338,12 @@ def evaluate_against_production_model(session, new_model_version, test_df):
         y_pred_col_names="NEXT_MONTH_REVENUE_PREDICTION"
     )
     
-    # Print both MAPE values for comparison.
-    print(development_model_mape, production_model_mape)
-    
     # ------------------------------------------------------------------------------
     # Compare and Update Model Aliases Based on Performance
     # ------------------------------------------------------------------------------
     if development_model_mape < production_model_mape:
         print(f"New model with version {new_model_version} has a lower MAPE compared to current production model.")
+        print(f"New model will be put into production by setting its alias to PRODUCTION.")
         
         # Create a DataFrame to display the MAPE values of both models.
         mape_values_df = pd.DataFrame(
@@ -369,6 +366,7 @@ def evaluate_against_production_model(session, new_model_version, test_df):
         development_model.set_alias('PRODUCTION')
     else:
         print(f"Existing production model has a lower MAPE compared to the developed model.")
+        print(f"New model is not automatically set into production.")
 
 def train_new_model(session, feature_cutoff_date, target_start_date, target_end_date, model_version):
     # ------------------------------------------------------------------------------

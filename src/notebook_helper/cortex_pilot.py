@@ -17,7 +17,7 @@ Make sure to suggest prompts that:
 * Include instructions about how the plot should look.
 
 Return the suggested prompts as JSON using the following format:
-{prompts:[{'prompt': prompt, 'prompt_explanation': prompt_explanation}]}
+{prompts:[{"prompt": prompt, "prompt_explanation": prompt_explanation}]}
 Only return the JSON, no other content.
 """
 
@@ -40,6 +40,26 @@ Use df in your code to reference the dataframe. The dataframe has the following 
 The first 5 rows of the dataframe look like this:
 {dataframe_sample}
 """
+
+USER_PROMPT_TEMPLATE_DESCRIBE_COLUMN = """
+Look at the provided sample of my dataframe and provide a short business description for each column in my dataframe.
+Return the descriptions in the following JSON format:
+{{"column_name1": "column_description1", "column_name2": "column_description2"}}
+
+The first 5 rows of the dataframe look like this:
+{dataframe_sample}
+
+The available columns are:
+{dataframe_columns}
+"""
+
+USER_PROMPT_TEMPLATE_DESCRIBE_COLUMN_SQL = """
+Given the following SQL query, explain how the column {column} is calculated.
+Make sure your explanation is easy to follow and also provide a short summary of the explanation.
+The SQL Query:
+{sql_query}
+"""
+
 
 class CortexPilot():
     def __init__(self, llm='mistral-large2', temperature=0, top_p=0):
@@ -64,22 +84,20 @@ class CortexPilot():
         pattern = r"```python(.*?)```"
         # re.DOTALL allows the dot (.) to match newlines as well
         match = re.search(pattern, text, re.DOTALL)
-        return match.group(1).strip() if match else "No JSON code found in the input string."
-        
+        if match is not None:
+            return match.group(1).strip()
+        else:
+            return text.strip()
+
     def _extract_json_code(self, text):
         """
         Function to extract JSON contents from LLM responses.
         """
-        # sonnet usually returns JSONs directly
-        if self.llm == 'claude-3-5-sonnet':
-            return text.strip()
-        # mistral-large2 wraps it in triple backticks labeled 'json'
-        elif self.llm == 'mistral-large2':
-            pattern = r"```json(.*?)```"
-            match = re.search(pattern, text, re.DOTALL)  # DOTALL ensures newlines are captured
-            return match.group(1).strip() if match else "No JSON code found in the input string."
-        elif self.llm == 'llama3.1-70b':
-            st.info(text)
+        pattern = r"```json(.*?)```"
+        match = re.search(pattern, text, re.DOTALL)
+        if match is not None:
+            return match.group(1).strip()
+        else:
             return text.strip()
 
     def _select_dataframe(self):
@@ -138,7 +156,9 @@ class CortexPilot():
         if st.session_state['suggested_prompts'] is not None:
             with st.expander("Sample Questions:", expanded=True):
                 for prompt in st.session_state['suggested_prompts']['prompts']:
-                    st.code(prompt['prompt'], language=None)
+                    with st.container(border=True):
+                        st.code(prompt['prompt'], language=None)
+                        st.markdown(f"**{prompt['prompt_explanation']}**")
 
     def _generate_plotly_code(self, df):
         """
@@ -222,23 +242,32 @@ class CortexPilot():
         self._suggest_llm_prompts()
         self._generate_plotly_code(dataframe)
     
-    def f_describe_columns(self, df, columns=None, exclude_columns=None):
+    def f_describe_columns(self, df, columns: list = None, exclude_columns: list =None):
         """
         Function to use Cortex LLMs to generate business descriptions for columns of a dataframe.
         """
-        if columns:
-            df = df.select(columns)
-        if exclude_columns:
-            df = df.drop(exclude_columns)
-        prompt = f'Return a JSON string with column names as keys and a short business description as values. The columns are: {df.columns}. Do not wrap the json codes in JSON markers.'
+        if isinstance(df, pd.DataFrame):
+            if columns:
+                df = df[columns]
+            if exclude_columns:
+                df = df.drop(exclude_columns, axis=1)
+        else:
+            if columns:
+                df = df.select(columns)
+            if exclude_columns:
+                df = df.drop(exclude_columns)
+            df = df.sample(n=5).to_pandas()
+        prompt = USER_PROMPT_TEMPLATE_DESCRIBE_COLUMN.format(dataframe_sample=df.head(5).to_markdown(), dataframe_columns=df.columns)
         llm_response = complete(self.llm, prompt, stream=False)
+        llm_response = self._extract_json_code(llm_response)
         feature_descriptions = json.loads(llm_response)
         return feature_descriptions
     
-    def f_explain_column_sql(self, sql, column):
+    def f_explain_column_sql(self, column, sql_query):
         """
         Function to use Cortex LLMs to explain the calculation of a column based on the provided SQL.
         """
-        prompt = f'You are given a SQL query. Explain how the column {column} is calculated. The SQL query: {sql}'
+        #prompt = f'You are given a SQL query. Explain how the column {column} is calculated. The SQL query: {sql}'
+        prompt = USER_PROMPT_TEMPLATE_DESCRIBE_COLUMN_SQL.format(column=column, sql_query=sql_query)
         resp = complete(self.llm, prompt)
         return resp
