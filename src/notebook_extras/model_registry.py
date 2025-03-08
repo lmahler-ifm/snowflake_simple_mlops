@@ -4,6 +4,8 @@ import pandas as pd
 from snowflake.snowpark.functions import lit
 import plotly.graph_objects as go
 import datetime
+import shap
+import numpy as np
 
 # Set default date to today
 today = datetime.date.today()
@@ -21,6 +23,26 @@ class ModelRegistryHelper:
         
         # Allowed drift metrics
         self.ALLOWED_DRIFT_METRICS = ['JENSEN_SHANNON', 'WASSERSTEIN', 'DIFFERENCE_OF_MEANS']
+        self.update_registry_data()
+
+    def get_model_explanations(self, model, feature_columns, feature_cutoff_date):
+        source_table = self.all_monitors[(self.all_monitors['model_name'] == model.model_name) & (self.all_monitors['model_version'] == model.version_name)]['source'].iloc[0]
+        predictions = self.session.table(f"{source_table['database_name']}.{source_table['schema_name']}.{source_table['name']}").filter(col('FEATURE_CUTOFF_DATE') == feature_cutoff_date)
+        predictions = model.run(predictions, function_name='predict')
+        explanations = model.run(predictions, function_name="explain")
+        explanations = explanations.rename({col:col.replace('"""', '').upper() for col in explanations.columns})
+        shap_columns = [col for col in explanations.columns if '_EXPLANATION' in col]
+        explanations = explanations.to_pandas()
+        
+        # Create the native shap Explanation object
+        shap_exp = shap.Explanation(
+            values = explanations[shap_columns].values,
+            base_values = np.full((len(explanations),), explanations['NEXT_MONTH_REVENUE_PREDICTION'].mean()),
+            data = explanations[feature_columns].values,
+            feature_names=feature_columns
+        )
+        return shap_exp
+        
 
     # Function to retrieve performance metrics for models from the model registry
     def get_model_performance_metrics(self, models, metrics, start_date, end_date, aggregation):
@@ -165,7 +187,7 @@ class ModelRegistryHelper:
         all_monitors['model_name'] = all_monitors['model'].apply(lambda x: x['model_name'])
         all_monitors['model_version'] = all_monitors['model'].apply(lambda x: x['version_name'])
         all_monitors['monitor_columns'] = all_monitors['source'].apply(lambda x: self.session.table(f"{x['database_name']}.{x['schema_name']}.{x['name']}").columns)
-        all_monitors = all_monitors[['model_name', 'model_version', 'monitor_columns']]
+        #all_monitors = all_monitors[['model_name', 'model_version', 'monitor_columns']]
         
         self.all_monitors = all_monitors
         return all_monitors

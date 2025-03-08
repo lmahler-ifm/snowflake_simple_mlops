@@ -12,6 +12,9 @@ from snowflake.ml.modeling.metrics import mean_absolute_percentage_error
 from snowflake.ml.monitoring.entities.model_monitor_config import ModelMonitorSourceConfig, ModelMonitorConfig
 from opentelemetry import trace
 
+import logging
+from opentelemetry import trace
+
 class ModelTrainer():
     def __init__(self, session):
         self.session = session
@@ -25,9 +28,10 @@ class ModelTrainer():
             session=session, 
             database='SIMPLE_MLOPS_DEMO', 
             name='FEATURE_STORE', 
-            default_warehouse='FEATURE_STORE_WH',
+            default_warehouse=session.get_current_warehouse(),
             creation_mode=CreationMode.CREATE_IF_NOT_EXIST,
         )
+        self.logger = logging.getLogger("logger.ModelTrainer")
         self.tracer = trace.get_tracer("tracer.ModelTrainer")
 
     def train_new_model(self, feature_views: dict, feature_cutoff_date: str, target_start_date: str, target_end_date: str, model_version: str):
@@ -40,10 +44,7 @@ class ModelTrainer():
 
     def prepare_data(self, feature_views: dict, feature_cutoff_date: str, target_start_date: str, target_end_date: str, model_version: str):
         with self.tracer.start_as_current_span("Data Preparation"):
-            # Retrieve all feature views from the FeatureStore (using version 'V1' for each).
             feature_views = [self.fs.get_feature_view(fv,feature_views[fv]) for fv in feature_views]
-            
-            print('Creating training dataset...')
             target_df = self.session.table('SIMPLE_MLOPS_DEMO.RETAIL_DATA.TRANSACTIONS')
             target_df = (
                 target_df.filter(col('DATE').between(target_start_date,target_end_date))
@@ -52,10 +53,7 @@ class ModelTrainer():
                 .with_column('FEATURE_CUTOFF_DATE', F.to_date(lit(feature_cutoff_date)))
             )
             
-            # Get list of all customers
             customers_df = self.session.table('SIMPLE_MLOPS_DEMO.RETAIL_DATA.CUSTOMERS').select('CUSTOMER_ID').distinct()
-            
-            # Create spine dataframe
             spine_df = target_df.join(customers_df, on=['CUSTOMER_ID'], how='outer')
             spine_df = spine_df.fillna(0, subset='NEXT_MONTH_REVENUE')
     
@@ -69,15 +67,15 @@ class ModelTrainer():
                 include_feature_view_timestamp_col=False,
                 desc=f"Training dataset from {feature_cutoff_date}"
             )
+            
             df = train_dataset.read.to_snowpark_dataframe()
             train_df, test_df = df.random_split(weights=[0.9, 0.1], seed=0)
             feature_columns = train_df.drop(['CUSTOMER_ID', 'FEATURE_CUTOFF_DATE', 'NEXT_MONTH_REVENUE']).columns
-            print('Training dataset created.')
+            self.logger.info('Training dataset created.')
             return  train_df, test_df, feature_columns
         
     def train(self, train_df, feature_columns):
         with self.tracer.start_as_current_span("Model Fitting"):
-            # Initialize the XGBoost regressor with the selected hyperparameters.
             model = XGBRegressor(
                 input_cols=feature_columns,
                 label_cols=['NEXT_MONTH_REVENUE'],
@@ -86,22 +84,22 @@ class ModelTrainer():
                 learning_rate=0.05,
                 random_state=0
             )
-            
-            # Fit the model on the training data.
             model = model.fit(train_df)
+            feature_importance = dict(zip(feature_columns, xgb_model.to_xgboost().feature_importances_))
+            telemetry.add_event("model_training", {"feature_importance": feature_importance})
+            self.logger.info('Successfully trained a new model.')
             return model
 
     def evaluate_model(self, model, test_df):
         with self.tracer.start_as_current_span("Model Evaluation"):
-            # Generate predictions on the test set.
             predictions = model.predict(test_df)
-            
-            # Calculate the Mean Absolute Percentage Error (MAPE) as a performance metric.
             mape = mean_absolute_percentage_error(
                 df=predictions, 
                 y_true_col_names="NEXT_MONTH_REVENUE", 
                 y_pred_col_names="NEXT_MONTH_REVENUE_PREDICTION"
             )
+            telemetry.add_event("model_evaluation", {"metric": "mape", "value": mape})
+            self.logger.info(f'New model has a MAPE of {mape}.')
             return mape, predictions
 
     def register_new_model(self, model, model_version, train_df, feature_columns, feature_cutoff_date, mape):
@@ -119,12 +117,11 @@ class ModelTrainer():
                 sample_input_data=train_df.select(feature_columns).limit(10),
                 options={"relax_version": False, "enable_explainability": True}
             )
-            print(f'Registered new model with version {model_version} in model registry.')
+            self.logger.info(f'Registered new model with version {model_version} in model registry.')
             return registered_model
 
     def create_model_monitor(self, registered_model, model_version, predictions):
         with self.tracer.start_as_current_span("Model Monitor Creation"):
-            # Create base and source tables
             predictions.write.save_as_table(f'SIMPLE_MLOPS_DEMO.MODEL_REGISTRY.MM_REVENUE_BASELINE_{model_version}', mode='overwrite')
             predictions.write.save_as_table(f'SIMPLE_MLOPS_DEMO.MODEL_REGISTRY.MM_REVENUE_SOURCE_{model_version}', mode='overwrite')
             
@@ -153,13 +150,8 @@ class ModelTrainer():
 
     def evaluate_against_production_model(self, registered_model, test_df, mape):
         with self.tracer.start_as_current_span("Model Deployment"):
-            # Retrieve the production model for 'CUSTOMER_REVENUE_MODEL' using the 'PRODUCTION' alias.
             production_model = self.registry.get_model('CUSTOMER_REVENUE_MODEL').version('PRODUCTION')
-            
-            # Run predictions on the test dataset using the production model.
             production_model_predictions = production_model.run(test_df, function_name='PREDICT')
-            
-            # Calculate the Mean Absolute Percentage Error (MAPE) for the production model predictions.
             production_model_mape = mean_absolute_percentage_error(
                 df=production_model_predictions, 
                 y_true_col_names="NEXT_MONTH_REVENUE", 
@@ -167,13 +159,13 @@ class ModelTrainer():
             )
             
             if mape < production_model_mape:
-                print(f"New model has a lower MAPE compared to current production model.")
-                print(f"New model will be put into production by setting its alias to PRODUCTION.")
+                self.logger.info(f"New model has a lower MAPE compared to current production model.")
+                self.logger.info(f"New model will be put into production by setting its alias to PRODUCTION.")
                 
                 # Update model aliases:
                 production_model.unset_alias('PRODUCTION')
                 production_model.set_alias('DEPRECATED')
                 registered_model.set_alias('PRODUCTION')
             else:
-                print(f"Existing production model has a lower MAPE compared to the developed model.")
-                print(f"New model is not automatically set into production.")
+                self.logger.info(f"Existing production model has a lower MAPE compared to the developed model.")
+                self.logger.info(f"New model is not automatically set into production.")
