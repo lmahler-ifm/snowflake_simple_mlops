@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import datetime
 import shap
 import numpy as np
+from snowflake.snowpark.functions import col
 
 # Set default date to today
 today = datetime.date.today()

@@ -26,6 +26,8 @@ from snowflake.core.stage import Stage, StageEncryption
 import streamlit as st
 import plotly.express as px
 
+from snowflake.snowpark import functions as F
+
 class Demoflow():
     def __init__(self):
         self.session = get_active_session()
@@ -180,41 +182,31 @@ class Demoflow():
                 source=actual_values_df
             )
             print(f"Generated actual values until: {(datetime.strptime(date, '%Y-%m-%d') + relativedelta(months=1)).strftime('%Y-%m-%d')}.")
-    
-    def get_customer_revenue_plot(self, df, customer_id):
-        cust_revenue = (
-            df.filter(col('CUSTOMER_ID') == customer_id)
-            .group_by(['DATE','CUSTOMER_ID','TRANSACTION_CHANNEL'])
-            .agg(F.sum('TRANSACTION_AMOUNT').alias('REVENUE'))
-            .order_by(col('DATE').asc())
-            .to_pandas()
-        )
 
-        fig = px.line(
-            cust_revenue,
-            x="DATE",
-            y="REVENUE",
-            color="TRANSACTION_CHANNEL",  # One trace per channel
-            title="Total Transaction Amount Over Time",
-            labels={"TRANSACTION_AMOUNT": "Total Transaction Amount", "DATE": "Date"},
-            color_discrete_map={"ONLINE": "green", "IN_STORE": "red"}
+    def get_customer_revenue_plot(self, snowpark_df, customer_id):
+        df_filtered = snowpark_df.filter(col("CUSTOMER_ID") == customer_id)
+        df_with_week = df_filtered.with_column("WEEK_START", F.date_trunc("week", col("DATE")))
+        
+        df_grouped = df_with_week.group_by("WEEK_START", "TRANSACTION_CHANNEL") \
+            .agg(F.avg(col("TRANSACTION_AMOUNT")).alias("TRANSACTION_AMOUNT"))
+        
+        df_total = df_grouped.group_by("WEEK_START") \
+            .agg(F.sum(col("TRANSACTION_AMOUNT")).alias("TOTAL_REVENUE"))
+        
+        df_joined = df_grouped.join(df_total, on="WEEK_START")
+        df_final = df_joined.with_column("PERCENTAGE", 
+                                        col("TRANSACTION_AMOUNT") / col("TOTAL_REVENUE") * 100)
+        
+        pdf = df_final.to_pandas()
+        
+        # Plot using Plotly Express
+        fig = px.bar(
+            pdf, 
+            x="WEEK_START", 
+            y="PERCENTAGE", 
+            color="TRANSACTION_CHANNEL",
+            title="Percentage Distribution of Average Transaction Amount per Calendar Week"
         )
-        
-        # Fill the area under the lines
-        fig.update_traces(fill="tonexty")  # Fills area from line to zero on the Y-axis
-        
-        fig.update_layout(
-            title_font=dict(size=20),  # Make title larger
-            xaxis_title="Date",
-            yaxis_title="Total Transaction Amount",
-            xaxis=dict(tickformat="%Y-%m-%d"),  # Format x-axis labels
-            legend=dict(
-                orientation="h",  # Make legend horizontal
-                yanchor="top", 
-                y=-0.2,  # Position below chart
-                xanchor="center", 
-                x=0.5
-            )
-        )
-        
+        fig.update_xaxes(title="Week Start Date")
+        fig.update_yaxes(title="Percentage")
         st.plotly_chart(fig)

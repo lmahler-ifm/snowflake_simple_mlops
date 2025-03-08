@@ -13,6 +13,7 @@ from snowflake.ml.monitoring.entities.model_monitor_config import ModelMonitorSo
 from opentelemetry import trace
 
 import logging
+from snowflake import telemetry
 from opentelemetry import trace
 
 class ModelTrainer():
@@ -85,7 +86,7 @@ class ModelTrainer():
                 random_state=0
             )
             model = model.fit(train_df)
-            feature_importance = dict(zip(feature_columns, xgb_model.to_xgboost().feature_importances_))
+            feature_importance = dict(zip(feature_columns, model.to_xgboost().feature_importances_))
             telemetry.add_event("model_training", {"feature_importance": feature_importance})
             self.logger.info('Successfully trained a new model.')
             return model
