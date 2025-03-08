@@ -42,7 +42,7 @@ class Demoflow():
         self.root.databases['SIMPLE_MLOPS_DEMO'].schemas.create(schema=Schema(name="RETAIL_DATA"), mode=CreateMode.or_replace)
         self.root.databases['SIMPLE_MLOPS_DEMO'].schemas.create(schema=Schema(name="FEATURE_STORE"), mode=CreateMode.or_replace)
         self.root.databases['SIMPLE_MLOPS_DEMO'].schemas.create(schema=Schema(name="MODEL_REGISTRY"), mode=CreateMode.or_replace)
-        self.root.databases["SIMPLE_MLOPS_DEMO"].schemas["PUBLIC"].stages.create(stage=Stage(name="my_stage", encryption=StageEncryption(type="SNOWFLAKE_SSE"), comment='Stage for storing pipelines.'), mode=CreateMode.or_replace)
+        self.root.databases["SIMPLE_MLOPS_DEMO"].schemas["PUBLIC"].stages.create(stage=Stage(name="PIPELINES", encryption=StageEncryption(type="SNOWFLAKE_SSE"), comment='Stage for storing pipelines.'), mode=CreateMode.or_replace)
         self.session.table('SIMPLE_MLOPS_DEMO._DATA_GENERATION._TRANSACTIONS').filter(col('DATE') <= lit('2024-04-30')).write.save_as_table(table_name='SIMPLE_MLOPS_DEMO.RETAIL_DATA.TRANSACTIONS', mode='overwrite')
         self.session.table('SIMPLE_MLOPS_DEMO._DATA_GENERATION._CUSTOMERS').write.save_as_table('SIMPLE_MLOPS_DEMO.RETAIL_DATA.CUSTOMERS')
         print('Setup finished.')
