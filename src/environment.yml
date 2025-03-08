@@ -11,3 +11,4 @@ dependencies:
   - snowflake.core=1.0.5
   - statsmodels=0.14.4
   - tabulate=*
+  - snowflake-telemetry-python=*

@@ -23,6 +23,8 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from functools import reduce
 from snowflake.core.stage import Stage, StageEncryption
+import streamlit as st
+import plotly.express as px
 
 class Demoflow():
     def __init__(self):
@@ -178,3 +180,41 @@ class Demoflow():
                 source=actual_values_df
             )
             print(f"Generated actual values until: {(datetime.strptime(date, '%Y-%m-%d') + relativedelta(months=1)).strftime('%Y-%m-%d')}.")
+    
+    def get_customer_revenue_plot(self, df, customer_id):
+        cust_revenue = (
+            df.filter(col('CUSTOMER_ID') == customer_id)
+            .group_by(['DATE','CUSTOMER_ID','TRANSACTION_CHANNEL'])
+            .agg(F.sum('TRANSACTION_AMOUNT').alias('REVENUE'))
+            .order_by(col('DATE').asc())
+            .to_pandas()
+        )
+
+        fig = px.line(
+            cust_revenue,
+            x="DATE",
+            y="REVENUE",
+            color="TRANSACTION_CHANNEL",  # One trace per channel
+            title="Total Transaction Amount Over Time",
+            labels={"TRANSACTION_AMOUNT": "Total Transaction Amount", "DATE": "Date"},
+            color_discrete_map={"ONLINE": "green", "IN_STORE": "red"}
+        )
+        
+        # Fill the area under the lines
+        fig.update_traces(fill="tonexty")  # Fills area from line to zero on the Y-axis
+        
+        fig.update_layout(
+            title_font=dict(size=20),  # Make title larger
+            xaxis_title="Date",
+            yaxis_title="Total Transaction Amount",
+            xaxis=dict(tickformat="%Y-%m-%d"),  # Format x-axis labels
+            legend=dict(
+                orientation="h",  # Make legend horizontal
+                yanchor="top", 
+                y=-0.2,  # Position below chart
+                xanchor="center", 
+                x=0.5
+            )
+        )
+        
+        st.plotly_chart(fig)

@@ -3,6 +3,10 @@ import ast
 import pandas as pd
 from snowflake.snowpark.functions import lit
 import plotly.graph_objects as go
+import datetime
+
+# Set default date to today
+today = datetime.date.today()
 
 class ModelRegistryHelper:
     def __init__(self, session, registry):
@@ -12,7 +16,7 @@ class ModelRegistryHelper:
         # Allowed model performance metrics
         self.ALLOWED_MODEL_TYPES_METRICS = {
             'TASK.TABULAR_BINARY_CLASSIFICATION': ['PRECISION', 'F1_SCORE', 'CLASSIFICATION_ACCURACY', 'ROC_AUC', 'RECALL'],
-            'Task.TABULAR_REGRESSION': ['MSE', 'RMSE', 'MAPE', 'MAE']
+            'Task.TABULAR_REGRESSION': ['MAPE', 'MAE', 'MSE', 'RMSE']
         }
         
         # Allowed drift metrics
@@ -148,8 +152,9 @@ class ModelRegistryHelper:
         all_models['aliases'] = all_models['aliases'].apply(lambda x: ast.literal_eval(x))
         all_models = all_models.explode('versions')
         all_models = all_models.rename(columns={'versions': 'model_version', 'name': 'model_name'})
-        all_models = all_models.sort_values(['model_name', 'created_on', 'model_version'])
-        all_models = all_models[['model_name', 'model_version', 'aliases', 'model_task']]
+        all_models = all_models.sort_values(['created_on', 'model_name', 'model_version'])
+        all_models = all_models[['model_name', 'model_version', 'model_task', 'owner', 'created_on']]
+        all_models["created_on"] = all_models["created_on"].dt.strftime('%Y-%m-%d %H:%M')
         self.all_models = all_models
         return all_models
 
@@ -187,7 +192,7 @@ class ModelRegistryHelper:
         all_models = self.all_models
         all_monitors = self.all_monitors
             
-        with st.expander('Select Models:', expanded=True):
+        with st.expander('Models:', expanded=True):
             selection = st.dataframe(all_models, selection_mode='multi-row', on_select="rerun", hide_index=True, use_container_width=True)
         
         if len(selection['selection']['rows']) == 0:
@@ -198,32 +203,33 @@ class ModelRegistryHelper:
                 st.error('All selected models must have the same task.')
             else:
                 with st.form("my_form"):
-                    col1, col2 = st.columns(2)
+                    col1, col2, col3 = st.columns(3)
                     if selected_models.iloc[0]['model_task'] == 'Task.TABULAR_REGRESSION':
-                        selected_performance_metric = col1.selectbox('Select Model Performance Metric:', self.ALLOWED_MODEL_TYPES_METRICS['Task.TABULAR_REGRESSION'])
+                        selected_performance_metric = col1.selectbox('Model Performance Metric:', self.ALLOWED_MODEL_TYPES_METRICS['Task.TABULAR_REGRESSION'])
                     else:
-                        selected_performance_metric = col1.selectbox('Select Model Performance Metric:', self.ALLOWED_MODEL_TYPES_METRICS['Task.TABULAR_BINARY_CLASSIFICATION'])
-                    selected_drift_metric = col2.selectbox('Select Model Drift Metric:', self.ALLOWED_DRIFT_METRICS)
+                        selected_performance_metric = col1.selectbox('Model Performance Metric:', self.ALLOWED_MODEL_TYPES_METRICS['Task.TABULAR_BINARY_CLASSIFICATION'])
+                    selected_drift_metric = col2.selectbox('Model Drift Metric:', self.ALLOWED_DRIFT_METRICS)
+                    date_range = col3.date_input("Date Range:",(datetime.date(2024, 4, 1), today))
 
                     models = selected_models.apply(lambda row: self.registry.get_model(row['model_name']).version(row['model_version']), axis=1).tolist()
                     
-                    selected_columns = st.multiselect('Select Drift columns:', all_monitors['monitor_columns'].explode().unique())
+                    selected_columns = st.multiselect('Drift columns:', all_monitors['monitor_columns'].explode().unique())
                     submitted = st.form_submit_button("Visualize Model Performance")
                     
                     if submitted:
                         df_model = self.get_model_performance_metrics(
                             models=models,
                             metrics=[selected_performance_metric],
-                            start_date='2024-01-01',
-                            end_date='2024-12-31',
+                            start_date=date_range[0],
+                            end_date=date_range[1],
                             aggregation='1 day'
                         ).to_pandas()
         
                         df_drift = self.get_model_drift_metrics(
                             models=models,
                             metrics=[selected_drift_metric],
-                            start_date='2024-01-01',
-                            end_date='2024-12-31',
+                            start_date=date_range[0],
+                            end_date=date_range[1],
                             aggregation='1 day',
                             columns=selected_columns
                         ).to_pandas()
