@@ -9,11 +9,10 @@ import streamlit as st
 import streamlit as st
 
 class LineageHelper:
-    def __init__(self, session, registry):
-        self.session = session
-        self.registry = registry
+    def __init__(self):
+        pass
 
-    def visualize_lineage(df: pd.DataFrame, short_names: bool = False, initial_zoom: float = 1.0):
+    def visualize_lineage(self, df: pd.DataFrame, short_names: bool = False, initial_zoom: float = 1.0):
         """
         Visualize a lineage graph given a DataFrame with columns:
         - SOURCE_OBJECT (JSON string)
