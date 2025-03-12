@@ -29,50 +29,31 @@ Integrate this Github Repository with Snowflake by running the following SQL cod
 ```sql
 USE ROLE ACCOUNTADMIN;
 
--- Create warehouses
-CREATE WAREHOUSE IF NOT EXISTS TRAIN_WH WITH WAREHOUSE_SIZE='MEDIUM';
-CREATE WAREHOUSE IF NOT EXISTS COMPUTE_WH WITH WAREHOUSE_SIZE='X-SMALL';
-
--- Create a fresh Database
-CREATE OR REPLACE DATABASE SIMPLE_ML_DB;
-USE SCHEMA SIMPLE_ML_DB.PUBLIC;
+CREATE OR REPLACE DATABASE SIMPLE_MLOPS_DEMO;
+USE SCHEMA SIMPLE_MLOPS_DEMO.PUBLIC;
 
 -- Create the integration with Github
-CREATE OR REPLACE API INTEGRATION GITHUB_INTEGRATION_SIMPLE_ML_DEMO
+CREATE OR REPLACE API INTEGRATION GITHUB_INTEGRATION_SNOWFLAKE_SIMPLE_MLOPS
     api_provider = git_https_api
     api_allowed_prefixes = ('https://github.com/michaelgorkow/')
     enabled = true
     comment='Michaels repository containing all the awesome code.';
 
 -- Create the integration with the Github repository
-CREATE GIT REPOSITORY GITHUB_REPO_SIMPLE_ML_DEMO 
-	ORIGIN = 'https://github.com/michaelgorkow/snowflake_simple_ml' 
-	API_INTEGRATION = 'GITHUB_INTEGRATION_SIMPLE_ML_DEMO' 
-	COMMENT = 'Michaels repository containing all the awesome code.';
+CREATE GIT REPOSITORY GITHUB_REPOSITORY_SNOWFLAKE_SIMPLE_MLOPS
+	ORIGIN = 'https://github.com/michaelgorkow/snowflake_simple_mlops' 
+	API_INTEGRATION = 'GITHUB_INTEGRATION_SNOWFLAKE_SIMPLE_MLOPS' 
+	COMMENT = 'Repository from Michael Gorkow with a simple MLOps Demo.';
 
 -- Fetch most recent files from Github repository
-ALTER GIT REPOSITORY GITHUB_REPO_SIMPLE_ML_DEMO FETCH;
+ALTER GIT REPOSITORY GITHUB_REPOSITORY_SNOWFLAKE_SIMPLE_MLOPS FETCH;
 
--- Create demo notebook
-CREATE OR REPLACE NOTEBOOK SIMPLE_ML_DB.PUBLIC.SIMPLE_ML_DEMO FROM '@SIMPLE_ML_DB.PUBLIC.GITHUB_REPO_SIMPLE_ML_DEMO/branches/main/' MAIN_FILE = 'demo_notebook.ipynb' QUERY_WAREHOUSE = compute_wh;
-ALTER NOTEBOOK SIMPLE_ML_DB.PUBLIC.SIMPLE_ML_DEMO ADD LIVE VERSION FROM LAST;
+-- Run the Setup Script from Github to create demo asset
+EXECUTE IMMEDIATE FROM @SIMPLE_MLOPS_DEMO.PUBLIC.GITHUB_REPOSITORY_SNOWFLAKE_SIMPLE_MLOPS/branches/main/_internal/setup.sql;
 
--- Create Email Notification Integration
-CREATE OR REPLACE NOTIFICATION INTEGRATION my_email_int
+CREATE OR REPLACE NOTIFICATION INTEGRATION ML_MAIL_INTEGRATION
   TYPE=EMAIL
   ENABLED=TRUE;
-
--- Create Slack Notification Integration (Optional)
-CREATE OR REPLACE SECRET my_slack_webhook_secret
-  TYPE = GENERIC_STRING
-  SECRET_STRING = 'T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'; -- replace with your secret
-
-CREATE OR REPLACE NOTIFICATION INTEGRATION my_slack_webhook_int
-  TYPE=WEBHOOK
-  ENABLED=TRUE
-  WEBHOOK_URL='https://hooks.slack.com/services/SNOWFLAKE_WEBHOOK_SECRET'
-  WEBHOOK_SECRET=my_slack_webhook_secret
-  WEBHOOK_HEADERS=('Content-Type'='application/json');
 ```
 
 ## Snowflake Features in this demo
