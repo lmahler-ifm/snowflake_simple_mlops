@@ -2,7 +2,7 @@ import streamlit as st
 import json
 from snowflake.snowpark.context import get_active_session
 from snowflake.cortex import complete, CompleteOptions
-from snowflake.snowpark import functions as F.
+from snowflake.snowpark import functions as F
 from snowflake.snowpark.functions import approx_count_distinct, col
 from snowflake.snowpark.window import Window
 import inspect
