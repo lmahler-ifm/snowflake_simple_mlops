@@ -1,6 +1,9 @@
 import streamlit as st
 import json
+from snowflake.snowpark.context import get_active_session
 from snowflake.cortex import complete, CompleteOptions
+from snowflake.snowpark.functions import approx_count_distinct, col
+from snowflake.snowpark.window import Window
 import inspect
 import re
 import pandas as pd
@@ -60,9 +63,53 @@ The SQL Query:
 {sql_query}
 """
 
+USER_PROMPT_TEMPLATE_DESCRIBE_DATA = """
+You are provided with a dataframe that has the following statistics for every column of my dataframe:
+* count (total count of values)
+* max (max value for numerical columns, first alphabetical value for categorical columns)
+* mean (mean value for numerical columns, not applicable for categorical columns)
+* min (min value for numerical columns, last alphabetical value for categorical columns)
+* stddev (standard deviation for numerical columns, not applicable for categorical columns)
+* top (most common value for categorical variables)
+* freq (most common value’s frequency)
+* unique (number of unique values for categorical columns, not applicable for numerical columns)
+* datatype (string which is a categorical column, other values are numerical columns)
+
+Based on this information, provide insights into potential data quality issues that could impact training of a machine learning model.  
+
+Specifically, please identify and discuss:  
+
+1. **Missing Values:** Columns with significantly lower `count` values compared to others, which could indicate missing data.  
+2. **Outliers:** Columns where `min` or `max` values are far from the `mean`, or where `stddev` is unusually high, suggesting extreme values.  
+3. **Data Skewness:** Columns where the `mean` is significantly different from the `min` and `max`, indicating skewed distributions.  
+4. **Potential Data Type Issues:** Columns where numerical statistics may indicate categorical or incorrectly formatted data.  
+5. **Feature Scaling Issues:** Columns with very large or very small values that might require normalization or standardization for ML models.  
+6. **Other Anomalies:** Any unusual patterns that could suggest data corruption, incorrect data entry, or inconsistencies.  
+
+Provide actionable recommendations on how to address any detected issues to improve the dataset's quality for machine learning.  
+Make sure to base your recommendations on the type of model that will be trained which will be:
+Model: {model_type}
+
+Return these recommendations as a markdown table for streamlit's st.markdown() function with the following columns:
+* Column Name
+* Issue found (description of the actual issue found)
+* Recommendation (description of steps recommended to mitigate the found issue)
+
+Make sure there is one row per combination of column and issue.
+Only return the markdown table.
+
+Here is the output of `df.describe()`:  
+
+{dataframe_sample}
+"""
+
 
 class CortexPilot():
-    def __init__(self, llm='mistral-large2', temperature=0, top_p=0):
+    def __init__(self, session=None, llm='mistral-large2', temperature=0, top_p=0):
+        if session is None:
+            self.session = get_active_session()
+        else:
+            self.session = session
         self.llm = llm
         self.llm_options = CompleteOptions(
             temperature=temperature,
@@ -271,3 +318,82 @@ class CortexPilot():
         prompt = USER_PROMPT_TEMPLATE_DESCRIBE_COLUMN_SQL.format(column=column, sql_query=sql_query)
         resp = complete(self.llm, prompt)
         return resp
+    
+    def f_cortex_helper_describe_data(self, df, model_type='XGBoost Classifier'):
+        """
+        Requests the LLM to analyze potential issues in your data when used as training data for a machine learning model, based on the output of Snowpark's `describe()` function.  
+        Returns the analyzed dataframe along with a summary of detected issues and recommendations for improvement given a model type.
+        """
+        if isinstance(df, pd.DataFrame):
+            df = self.session.create_dataframe(df)
+        df_describe = self._get_dataframe_description(df).reset_index(drop=True)
+        #df_describe = df.describe().to_pandas()
+        df_for_prompt = df_describe.to_markdown()
+        user_query = USER_PROMPT_TEMPLATE_DESCRIBE_DATA.format(dataframe_sample = df_for_prompt, model_type=model_type)
+        llm_input = [{"role": "user", "content": user_query}]
+        llm_response = complete(model=self.llm, prompt=llm_input, options=self.llm_options)
+        return df_describe, llm_response
+
+    def _analyze_unique_values(self, df):
+        """
+        Get unique counts per string column.
+        """
+        categorical_columns = [col[0] for col in df.dtypes if col[1].startswith("string")]
+        df_unique_counts = df.select(
+            [approx_count_distinct(col(c)).alias(f"{c}") for c in categorical_columns]
+        ).to_pandas()
+        
+        df_unique_counts['SUMMARY'] = 'unique'
+        return df_unique_counts
+    
+    def _analyze_column_datatypes(self, df, describe_columns):
+        """
+        Create a dataframe with column names and their datatype
+        """
+        df_dtypes = pd.DataFrame(df.select(describe_columns).dtypes)
+        #df_dtypes[1] = df_dtypes[1].apply(lambda x: x.replace('(16777216)',''))
+        df_dtypes[1] = df_dtypes[1].str.replace(r"\(.*\)", "", regex=True)
+        df_dtypes = df_dtypes.set_index(0).T
+        df_dtypes['SUMMARY'] = 'datatype'
+        return df_dtypes
+    
+    def _describe(self, df):
+        """
+        Run describe on provided dataframe and return list of of columns
+        """
+        describe_result = df.describe().to_pandas().round(3)
+        describe_columns = list(describe_result.drop('SUMMARY',axis=1).columns)
+        return describe_result, describe_columns
+    
+    def _get_dataframe_description(self, df):
+        """
+        Describe dataframe using Snowpark describe() and enrich it with additional analysis.
+        """
+        describe_result, describe_columns = self._describe(df)
+        df_unique_counts = self._analyze_unique_values(df)
+        df_top_freq = self._get_freq_top_(df)
+        df_dtypes = self._analyze_column_datatypes(df, describe_columns)
+        df_describe = pd.concat([describe_result, df_top_freq, df_unique_counts, df_dtypes])
+        df_describe = df_describe.where(pd.notna(df_describe), '')
+        return df_describe
+
+    def _get_freq_top_(self, df):
+        categorical_columns = [col[0] for col in df.dtypes if col[1].startswith("string")]
+        for col_i, _col in enumerate(categorical_columns):
+            window_spec = Window.order_by(col("count").desc(), col(_col))
+            _col_df = (
+                df.group_by(_col)
+                .agg(F.count("*").alias("count"))
+                .with_column("rank", F.rank().over(window_spec))
+                .filter(col("rank") == 1)
+                .select(col(_col).alias('"top"'), col("count").alias('"freq"'))
+            )
+            if col_i == 0:
+                top_freq_df = _col_df
+            else:
+                top_freq_df = top_freq_df.union_all_by_name(_col_df)
+        top_freq_df = top_freq_df.to_pandas()
+        top_freq_df.index = categorical_columns
+        top_freq_df = top_freq_df.T
+        top_freq_df = top_freq_df.reset_index(names='SUMMARY')
+        return top_freq_df
