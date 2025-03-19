@@ -76,6 +76,44 @@ You are provided with a dataframe that has the following statistics for every co
 * unique (number of unique values for categorical columns, not applicable for numerical columns)
 * datatype (string which is a categorical column, other values are numerical columns)
 
+Based on this information, provide insights into potential data quality issues.
+
+Specifically, please identify and discuss:  
+
+1. **Missing Values:** Columns with significantly lower `count` values compared to others, which could indicate missing data.  
+2. **Outliers:** Columns where `min` or `max` values are far from the `mean`, or where `stddev` is unusually high, suggesting extreme values.  
+3. **Data Skewness:** Columns where the `mean` is significantly different from the `min` and `max`, indicating skewed distributions.  
+4. **Potential Data Type Issues:** Columns where numerical statistics may indicate categorical or incorrectly formatted data.  
+5. **Feature Scaling Issues:** Columns with very large or very small values that might require normalization or standardization for ML models.  
+6. **Other Anomalies:** Any unusual patterns that could suggest data corruption, incorrect data entry, or inconsistencies.  
+
+Provide actionable recommendations on how to address any detected issues to improve the dataset's quality.
+
+Return these recommendations as a markdown table for streamlit's st.markdown() function with the following columns:
+* Column Name
+* Issue found (description of the actual issue found)
+* Recommendation (description of steps recommended to mitigate the found issue)
+
+Make sure there is one row per combination of column and issue.
+Only return the markdown table.
+
+Here is the output of `df.describe()`:  
+
+{dataframe_sample}
+"""
+
+USER_PROMPT_TEMPLATE_DESCRIBE_DATA_FOR_ML = """
+You are provided with a dataframe that has the following statistics for every column of my dataframe:
+* count (total count of values)
+* max (max value for numerical columns, first alphabetical value for categorical columns)
+* mean (mean value for numerical columns, not applicable for categorical columns)
+* min (min value for numerical columns, last alphabetical value for categorical columns)
+* stddev (standard deviation for numerical columns, not applicable for categorical columns)
+* top (most common value for categorical variables)
+* freq (most common value’s frequency)
+* unique (number of unique values for categorical columns, not applicable for numerical columns)
+* datatype (string which is a categorical column, other values are numerical columns)
+
 Based on this information, provide insights into potential data quality issues that could impact training of a machine learning model.  
 
 Specifically, please identify and discuss:  
@@ -88,8 +126,9 @@ Specifically, please identify and discuss:
 6. **Other Anomalies:** Any unusual patterns that could suggest data corruption, incorrect data entry, or inconsistencies.  
 
 Provide actionable recommendations on how to address any detected issues to improve the dataset's quality for machine learning.  
-Make sure to base your recommendations on the type of model that will be trained which will be:
+Make sure to base your recommendations on the type of model that will be trained which will be and the feature column:
 Model: {model_type}
+Target: {target_variable}
 
 Return these recommendations as a markdown table for streamlit's st.markdown() function with the following columns:
 * Column Name
@@ -319,21 +358,6 @@ class CortexPilot():
         prompt = USER_PROMPT_TEMPLATE_DESCRIBE_COLUMN_SQL.format(column=column, sql_query=sql_query)
         resp = complete(self.llm, prompt)
         return resp
-    
-    def f_cortex_helper_describe_data(self, df, model_type='XGBoost Classifier'):
-        """
-        Requests the LLM to analyze potential issues in your data when used as training data for a machine learning model, based on the output of Snowpark's `describe()` function.  
-        Returns the analyzed dataframe along with a summary of detected issues and recommendations for improvement given a model type.
-        """
-        if isinstance(df, pd.DataFrame):
-            df = self.session.create_dataframe(df)
-        df_describe = self._get_dataframe_description(df).reset_index(drop=True)
-        #df_describe = df.describe().to_pandas()
-        df_for_prompt = df_describe.to_markdown()
-        user_query = USER_PROMPT_TEMPLATE_DESCRIBE_DATA.format(dataframe_sample = df_for_prompt, model_type=model_type)
-        llm_input = [{"role": "user", "content": user_query}]
-        llm_response = complete(model=self.llm, prompt=llm_input, options=self.llm_options)
-        return df_describe, llm_response
 
     def _analyze_unique_values(self, df):
         """
@@ -398,3 +422,34 @@ class CortexPilot():
         top_freq_df = top_freq_df.T
         top_freq_df = top_freq_df.reset_index(names='SUMMARY')
         return top_freq_df
+    
+
+    def f_cortex_helper_describe_data(self, df):
+        """
+        Requests the LLM to analyze potential issues in your data based on the output of Snowpark's `describe()` function.  
+        Returns the analyzed dataframe along with a summary of detected issues.
+        """
+        if isinstance(df, pd.DataFrame):
+            df = self.session.create_dataframe(df)
+        df_describe = self._get_dataframe_description(df).reset_index(drop=True)
+        #df_describe = df.describe().to_pandas()
+        df_for_prompt = df_describe.to_markdown()
+        user_query = USER_PROMPT_TEMPLATE_DESCRIBE_DATA.format(dataframe_sample = df_for_prompt)
+        llm_input = [{"role": "user", "content": user_query}]
+        llm_response = complete(model=self.llm, prompt=llm_input, options=self.llm_options)
+        return df_describe, llm_response
+        
+    def f_cortex_helper_describe_data_for_ml(self, df, target_column, model_type='XGBoost Classifier'):
+        """
+        Requests the LLM to analyze potential issues in your data when used as training data for a machine learning model, based on the output of Snowpark's `describe()` function.  
+        Returns the analyzed dataframe along with a summary of detected issues and recommendations for improvement given a model type.
+        """
+        if isinstance(df, pd.DataFrame):
+            df = self.session.create_dataframe(df)
+        df_describe = self._get_dataframe_description(df).reset_index(drop=True)
+        #df_describe = df.describe().to_pandas()
+        df_for_prompt = df_describe.to_markdown()
+        user_query = USER_PROMPT_TEMPLATE_DESCRIBE_DATA_FOR_ML.format(dataframe_sample = df_for_prompt, target_column=target_column, model_type=model_type)
+        llm_input = [{"role": "user", "content": user_query}]
+        llm_response = complete(model=self.llm, prompt=llm_input, options=self.llm_options)
+        return df_describe, llm_response
