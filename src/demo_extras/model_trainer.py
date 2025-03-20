@@ -130,6 +130,7 @@ class ModelTrainer():
 
     def create_model_monitor(self, registered_model, model_version, predictions):
         with self.tracer.start_as_current_span("Model Monitor Creation"):
+            predictions = predictions.with_column('FEATURE_CUTOFF_DATE', F.col('FEATURE_CUTOFF_DATE').cast('timestamp'))
             predictions.write.save_as_table(f'SIMPLE_MLOPS_DEMO.MODEL_REGISTRY.MM_REVENUE_BASELINE_{model_version}', mode='overwrite')
             predictions.write.save_as_table(f'SIMPLE_MLOPS_DEMO.MODEL_REGISTRY.MM_REVENUE_SOURCE_{model_version}', mode='overwrite')
             

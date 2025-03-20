@@ -38,6 +38,10 @@ Reference functions like:
 F.sum(), F.max(), etc.
 
 Before creating plots, make sure to order the relevant date/timestamp column if the dataframe has such a column.
+When using df.to_pandas() on date columns, make sure to convert the date columns to pandas datetime like this:
+df = df.to_pandas()
+df['MONTH'] = pd.to_datetime(df['MONTH'])
+
 When you create new dataframes, make sure that the object starts with an underscore.
 Use df in your code to reference the dataframe. The dataframe has the following columns: {dataframe_columns}
 
