@@ -6,7 +6,7 @@ ALTER DATABASE SIMPLE_MLOPS_DEMO SET TRACE_LEVEL = ALWAYS;
 
 -- Create warehouses
 CREATE WAREHOUSE IF NOT EXISTS COMPUTE_WH WITH WAREHOUSE_SIZE='X-SMALL';
-CREATE WAREHOUSE IF NOT EXISTS FEATURE_STORE_WH WITH WAREHOUSE_SIZE='MEDIUM';
+CREATE WAREHOUSE IF NOT EXISTS FEATURE_STORE_WH WITH WAREHOUSE_SIZE='XLARGE';
 USE WAREHOUSE FEATURE_STORE_WH;
 
 -- Create schema for setup
@@ -38,17 +38,17 @@ class GenerateTransactions:
         customer_id = 0
         while revenue > 0:
             # customer id
-            if (customer_id >= 0) and (customer_id < 400):
+            if (customer_id >= 0) and (customer_id < 4000):
                 transaction_amount = np.round(self.get_norm_value(5, 25, 20, 5),2)
-            elif (customer_id >= 400) and (customer_id < 800):
+            elif (customer_id >= 400) and (customer_id < 8000):
                 transaction_amount = np.round(self.get_norm_value(25, 50, 40, 5),2)
-            elif (customer_id >= 800) and (customer_id < 1100):
+            elif (customer_id >= 800) and (customer_id < 12000):
                 transaction_amount = np.round(self.get_norm_value(50, 100, 80, 10),2)
             else:
                 transaction_amount = np.round(self.get_norm_value(100, 150, 120, 10),2)
             transaction_channel = np.random.choice(['IN_SHOP','ONLINE'],p=in_shop_online)
             revenue = revenue - transaction_amount
-            if customer_id == 1200:
+            if customer_id == 15000: #1200
                 customer_id = 0
             customer_id = customer_id +1
             yield (customer_id, transaction_amount, transaction_channel) 
@@ -75,7 +75,7 @@ def run(session):
     dates = pd.date_range(start=start_date, end=end_date, freq='D')
     
     # Define base revenue (this is a baseline you can adjust)
-    base_revenue = 70000
+    base_revenue = 875000
     
     # Prepare a list to store computed records
     records = []
