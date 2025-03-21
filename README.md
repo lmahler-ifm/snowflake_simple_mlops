@@ -54,8 +54,11 @@ Once the demo setup finishes, click the provided link to open the notebook and e
 * [Snowpark ML](https://docs.snowflake.com/en/developer-guide/snowpark-ml/overview)
 * [Snowflake Feature Store](https://docs.snowflake.com/en/developer-guide/snowpark-ml/feature-store/overview)
 * [Snowflake Model Registry](https://docs.snowflake.com/en/developer-guide/snowpark-ml/model-registry/overview)
+* [Snowflake Model Observability](https://docs.snowflake.com/en/developer-guide/snowflake-ml/model-registry/model-observability)
+* [Snowflake Model Explainability](https://docs.snowflake.com/en/developer-guide/snowflake-ml/model-registry/model-explainability)
 * [Snowflake Cortex](https://docs.snowflake.com/en/user-guide/snowflake-cortex/llm-functions)
 * [Snowflake Alerts](https://docs.snowflake.com/en/user-guide/alerts)
+* [Snowflake Logging, Tracing & Metrics](https://docs.snowflake.com/en/developer-guide/logging-tracing/logging-tracing-overview)
 
 ## API Documentation
 * [Snowpark API](https://docs.snowflake.com/developer-guide/snowpark/reference/python/latest/snowpark/index)
