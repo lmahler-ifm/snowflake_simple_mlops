@@ -41,7 +41,7 @@ class Demoflow():
         )
 
     def setup(self):
-        # Setting up data for demo SNOWFLAKE_SSE
+        # Setting up data for demo
         self.root.databases['SIMPLE_MLOPS_DEMO'].schemas.create(schema=Schema(name="RETAIL_DATA"), mode=CreateMode.or_replace)
         self.root.databases['SIMPLE_MLOPS_DEMO'].schemas.create(schema=Schema(name="RETAIL_DATA"), mode=CreateMode.or_replace)
         self.root.databases['SIMPLE_MLOPS_DEMO'].schemas.create(schema=Schema(name="FEATURE_STORE"), mode=CreateMode.or_replace)
