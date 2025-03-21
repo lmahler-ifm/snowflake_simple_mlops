@@ -1,16 +1,18 @@
 # Simple MLOps in Snowflake
-This repo contains a very simple example for a classical machine learning problem.  
-Given some customer data from a fictional Ecommerce Company, we want to predict the yearly spent amount.
+This repo demonstrates a complete MLOps pipeline on Snowflake using Python, Snowpark, Snowflake ML, Cortex, and other native services. It walks through a real-world inspired use case:  
+**Predicting Future Customer Revenue from Historical Transaction Data.**
 
-## What you'll do
-In this example, you'll perform the following steps:
-
-
-## Requirements
-* Snowflake Account
+## What you'll learn
+* Data exploration and preparation using Snowpark Dataframes and LLMs
+* Feature engineering with Snowpark
+* Using the Snowflake Feature Store
+* Model training using XGBoost
+* Model evaluation and interpretability with SHAP
+* Using the Snowflake Model Registry
+* Model monitoring and alerting
 
 ## Get Started
-Register for a free Snowflake Trial Account:
+If you don't have a Snowflake account, register for a free Snowflake Trial Account:
 - [Free Snowflake Trial Account](https://signup.snowflake.com/)
 
 > [!IMPORTANT]
@@ -39,7 +41,7 @@ CREATE GIT REPOSITORY GITHUB_REPOSITORY_SNOWFLAKE_SIMPLE_MLOPS
 -- Fetch most recent files from Github repository
 ALTER GIT REPOSITORY GITHUB_REPOSITORY_SNOWFLAKE_SIMPLE_MLOPS FETCH;
 
--- Run the Setup Script from Github to create demo asset
+-- Run the Setup Script
 EXECUTE IMMEDIATE FROM @SIMPLE_MLOPS_DEMO.PUBLIC.GITHUB_REPOSITORY_SNOWFLAKE_SIMPLE_MLOPS/branches/main/_internal/setup.sql;
 ```
 
@@ -50,10 +52,11 @@ EXECUTE IMMEDIATE FROM @SIMPLE_MLOPS_DEMO.PUBLIC.GITHUB_REPOSITORY_SNOWFLAKE_SIM
 * [Snowflake Feature Store](https://docs.snowflake.com/en/developer-guide/snowpark-ml/feature-store/overview)
 * [Snowflake Model Registry](https://docs.snowflake.com/en/developer-guide/snowpark-ml/model-registry/overview)
 * [Snowflake Cortex](https://docs.snowflake.com/en/user-guide/snowflake-cortex/llm-functions)
-* [Snowflake Notifications](https://docs.snowflake.com/en/user-guide/notifications/about-notifications)
+* [Snowflake Alerts](https://docs.snowflake.com/en/user-guide/alerts)
 
 ## API Documentation
 * [Snowpark API](https://docs.snowflake.com/developer-guide/snowpark/reference/python/latest/snowpark/index)
 * [Snowpark ML API](https://docs.snowflake.com/en/developer-guide/snowpark-ml/reference/latest/index)
 * [Snowflake Feature Store API](https://docs.snowflake.com/en/developer-guide/snowpark-ml/reference/latest/feature_store)
 * [Snowflake Model Registry API](https://docs.snowflake.com/en/developer-guide/snowpark-ml/reference/latest/registry)
+* [Snowflake Python API](https://docs.snowflake.com/en/developer-guide/snowflake-python-api/reference/latest/index)
