@@ -2,14 +2,19 @@
 This repo demonstrates a complete MLOps pipeline on Snowflake using Python, Snowpark, Snowflake ML, Cortex, and other native services. It walks through a real-world inspired use case:  
 **Predicting Future Customer Revenue from Historical Transaction Data.**
 
+The dataset was created artificially and contains:
+* 15.000 **Customers**
+* 1.962.125 **Transactions**
+
 ## What you'll learn
-* Data exploration and preparation using Snowpark Dataframes and LLMs
+* Data exploration and preparation using Snowpark Dataframes and Cortex LLMs
 * Feature engineering with Snowpark
 * Using the Snowflake Feature Store
 * Model training using XGBoost
 * Model evaluation and interpretability with SHAP
 * Using the Snowflake Model Registry
 * Model monitoring and alerting
+* Sending emails based on model alerts
 
 ## Get Started
 If you don't have a Snowflake account, register for a free Snowflake Trial Account:
@@ -45,6 +50,7 @@ ALTER GIT REPOSITORY GITHUB_REPOSITORY_SNOWFLAKE_SIMPLE_MLOPS FETCH;
 EXECUTE IMMEDIATE FROM @SIMPLE_MLOPS_DEMO.PUBLIC.GITHUB_REPOSITORY_SNOWFLAKE_SIMPLE_MLOPS/branches/main/_internal/setup.sql;
 ```
 
+## Explore and Run the Demo
 Once the demo setup finishes, click the provided link to open the notebook and explore the demo:  
 ![Setup Output](resources/setup_output.png)
 
