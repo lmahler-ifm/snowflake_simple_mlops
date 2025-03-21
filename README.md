@@ -45,6 +45,9 @@ ALTER GIT REPOSITORY GITHUB_REPOSITORY_SNOWFLAKE_SIMPLE_MLOPS FETCH;
 EXECUTE IMMEDIATE FROM @SIMPLE_MLOPS_DEMO.PUBLIC.GITHUB_REPOSITORY_SNOWFLAKE_SIMPLE_MLOPS/branches/main/_internal/setup.sql;
 ```
 
+Once the demo setup finishes, click the provided link to open the notebook and explore the demo:  
+![Setup Output](resources/setup_output.png)
+
 ## Snowflake Features in this demo
 * [Snowflake's Git Integration](https://docs.snowflake.com/en/developer-guide/git/git-overview)
 * [Snowpark](https://docs.snowflake.com/en/developer-guide/snowpark/python/index)
